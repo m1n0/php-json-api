@@ -80,13 +80,14 @@ class DataLinksHelper
      *
      * @return array
      */
-    public static function setResponseDataRelationship(array &$mappings, array &$array, array $parent)
+    public static function setResponseDataRelationship(array &$mappings, array &$array, array $parent, string $attributesCase)
     {
         $data = [JsonApiTransformer::RELATIONSHIPS_KEY => []];
 
         foreach ($array as $propertyName => $value) {
             if (\is_array($value)) {
                 self::addRelationshipData($mappings, $parent, $value, $propertyName, $data);
+
                 if (\array_key_exists(Serializer::MAP_TYPE, $value)) {
                     $newData = [];
 
@@ -109,7 +110,10 @@ class DataLinksHelper
                                     $href = \str_replace($idProperties, $idValues, $selfLink);
                                     if ($selfLink != $href) {
                                         $propertyNameKey = DataAttributesHelper::transformToValidMemberName($propertyName);
-                                        $propertyNameKey = self::camelCaseToUnderscore($propertyNameKey);
+
+                                        if ($attributesCase == 'snake_case') {
+                                            $propertyNameKey = RecursiveFormatterHelper::camelCaseToUnderscore($propertyNameKey);
+                                        }
 
                                         $newData[JsonApiTransformer::RELATIONSHIPS_KEY][$propertyNameKey][JsonApiTransformer::LINKS_KEY][JsonApiTransformer::SELF_LINK][JsonApiTransformer::LINKS_HREF] = $href;
                                     }
@@ -119,22 +123,24 @@ class DataLinksHelper
 
                         if (!empty($newData[JsonApiTransformer::RELATIONSHIPS_KEY][$propertyName])) {
                             $propertyNameKey = DataAttributesHelper::transformToValidMemberName($propertyName);
-                            $propertyNameKey = self::camelCaseToUnderscore($propertyNameKey);
+                            if ($attributesCase == 'snake_case') {
+                                $propertyNameKey = RecursiveFormatterHelper::camelCaseToUnderscore($propertyNameKey);
+                            }
 
                             if (!empty($d[Serializer::CLASS_IDENTIFIER_KEY])) {
-                                $type = $d[Serializer::CLASS_IDENTIFIER_KEY];
-                                $parentType = $parent[Serializer::CLASS_IDENTIFIER_KEY];
-
-                                //Removes relationships related to the current resource if filtering include resources has been set.
-                                if (!empty($mappings[$parentType]) && !empty($mappings[$parentType]->isFilteringIncludedResources())) {
-                                    foreach ($newData[JsonApiTransformer::RELATIONSHIPS_KEY][$propertyName] as $position => $includedResource) {
-                                        if (count($mappings[$parentType]->getIncludedResources()) > 0 &&
-                                            false === in_array($type, $mappings[$parentType]->getIncludedResources(), true)
-                                        ) {
-                                            unset($newData[JsonApiTransformer::RELATIONSHIPS_KEY][$propertyName][$position]);
-                                        }
-                                    }
-                                }
+//                                $type = $d[Serializer::CLASS_IDENTIFIER_KEY];
+//                                $parentType = $parent[Serializer::CLASS_IDENTIFIER_KEY];
+//
+//                                //Removes relationships related to the current resource if filtering include resources has been set.
+//                                if (!empty($mappings[$parentType]) && !empty($mappings[$parentType]->isFilteringIncludedResources())) {
+//                                    foreach ($newData[JsonApiTransformer::RELATIONSHIPS_KEY][$propertyName] as $position => $includedResource) {
+//                                        if (count($mappings[$parentType]->getIncludedResources()) > 0 &&
+//                                            false === in_array($type, $mappings[$parentType]->getIncludedResources(), true)
+//                                        ) {
+//                                            unset($newData[JsonApiTransformer::RELATIONSHIPS_KEY][$propertyName][$position]);
+//                                        }
+//                                    }
+//                                }
 
                                 $newData[JsonApiTransformer::RELATIONSHIPS_KEY][$propertyName] = array_filter($newData[JsonApiTransformer::RELATIONSHIPS_KEY][$propertyName]);
                                 if (!empty($newData[JsonApiTransformer::RELATIONSHIPS_KEY][$propertyName][JsonApiTransformer::DATA_KEY])) {
@@ -146,6 +152,8 @@ class DataLinksHelper
                 }
             }
         }
+
+
 
         return (array) \array_filter($data);
     }
