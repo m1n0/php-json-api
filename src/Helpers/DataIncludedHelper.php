@@ -308,10 +308,45 @@ class DataIncludedHelper
      */
     protected static function isDeleteableIncludedResource(array &$mappings, $parentType, $includeValue)
     {
-        return !empty($mappings[$parentType])
-        && count($mappings[$parentType]->getIncludedResources()) == 0 // Everything is included unless set to be included with Include object.
-        && false === in_array(
-            $includeValue[Serializer::CLASS_IDENTIFIER_KEY],
-            $mappings[$parentType]->getIncludedResources(), true);
+        // Original version
+        // =================
+        // return !empty($mappings[$parentType])
+        // && count($mappings[$parentType]->getIncludedResources()) > 0
+        // && false === in_array($includeValue[Serializer::CLASS_IDENTIFIER_KEY], $mappings[$parentType]->getIncludedResources(), true);
+
+        // Previously patched version
+        // ===========================
+        // return !empty($mappings[$parentType])
+        // && count($mappings[$parentType]->getIncludedResources()) == 0 // Everything is included unless set to be included with Include object.
+        // && false === in_array(
+        //     $includeValue[Serializer::CLASS_IDENTIFIER_KEY],
+        //     $mappings[$parentType]->getIncludedResources(), true);
+
+        // New version
+        // =============
+        if (empty($mappings[$parentType])) {
+            return false;
+        }
+
+        if (count($mappings[$parentType]->getIncludedResources()) === 0) {
+            return true;
+        }
+
+        if (in_array($includeValue[Serializer::CLASS_IDENTIFIER_KEY], $mappings[$parentType]->getIncludedResources(), true)) {
+            return false;
+        }
+
+        $includedResourcesParentClasses = array_map(
+            function ($resource) {
+                return (new \ReflectionClass($resource))->getParentClass()->getName();
+            },
+            $mappings[$parentType]->getIncludedResources()
+        );
+
+        if (in_array($includeValue[Serializer::CLASS_IDENTIFIER_KEY], $includedResourcesParentClasses)) {
+            return false;
+        }
+
+        return true;
     }
 }
